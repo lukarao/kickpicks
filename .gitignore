@@ -37,3 +37,5 @@ frontend/yarn-error.*
 frontend/*.tsbuildinfo
 
 frontend/app-example
+
+frontend/firebaseConfig.js
