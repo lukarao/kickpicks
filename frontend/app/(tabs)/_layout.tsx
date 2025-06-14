@@ -1,7 +1,7 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5'
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6'
 import Fontisto from '@expo/vector-icons/Fontisto';
-import { Image, View } from 'react-native'
+import { Image, StyleSheet, View } from 'react-native'
 import { Tabs } from 'expo-router'
 import { User, signOut } from 'firebase/auth'
 import { auth } from '@/firebaseConfig'
@@ -25,10 +25,11 @@ export default function TabLayout() {
 
     return (
         <Tabs screenOptions={{
+            headerStyle: {height: 100},
             headerTitleAlign: 'left',
             headerRight: () => {return (
                 <View>
-                    <Image source={{uri: (user?.photoURL as string)}} />
+                    <Image source={{uri: (user?.photoURL as string)}} style={styles.image} />
                 </View>
             )},
             tabBarActiveTintColor: 'black',
@@ -65,3 +66,14 @@ export default function TabLayout() {
         </Tabs>
     )
 }
+
+const styles = StyleSheet.create({
+    image: {
+        width: 40,
+        height: 40,
+        borderRadius: '50%',
+        marginRight: 15,
+        borderWidth: 1,
+        borderColor: 'rgb(216, 216, 216)'
+    }
+})

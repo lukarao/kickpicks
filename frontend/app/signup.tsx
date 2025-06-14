@@ -1,10 +1,20 @@
-import Head from 'expo-router/head'
+import * as ImagePicker from 'expo-image-picker'
 import { Controller, useForm } from 'react-hook-form'
 import { Link, useRouter } from 'expo-router'
-import { Pressable, Text, TextInput, View } from 'react-native'
-import { auth } from '@/firebaseConfig'
+import { auth, storage } from '@/firebaseConfig'
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage'
 import { profanity } from '@2toad/profanity'
+import { useState } from 'react'
+
+import {
+    Image,
+    Pressable,
+    StyleSheet,
+    Text,
+    TextInput,
+    View
+} from 'react-native'
 
 type FormData = {
     name: string
@@ -16,47 +26,87 @@ const emailExp = /(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-
 
 export default function SignUp() {
     const {control, handleSubmit, setError, formState: {errors}} = useForm<FormData>({defaultValues: {email: "", password: ""}})
+    const [image, setImage] = useState<string | null>(null)
+
     const router = useRouter()
 
 	const onSubmit = handleSubmit((data) => {
         if (profanity.exists(data.name)) {
-            setError("name", {type: "custom", message: "Name cannot contain profanity."})
+            setError('name', {type: 'custom', message: 'Name cannot contain profanity.'})
             return
         }
         if (!emailExp.test(data.email)) {
-            setError("email", {type: "custom", message: "Email has to be a valid email."})
+            setError('email', {type: 'custom', message: 'Email has to be a valid email.'})
             return
         }
         if (data.password.length < 8) {
-            setError("password", {type: "custom", message: "Password has to be at least 8 characters."})
+            setError('password', {type: 'custom', message: 'Password has to be at least 8 characters.'})
             return
         }
         if (data.password.length > 4096) {
-            setError("password", {type: "custom", message: "Password is too long."})
+            setError('password', {type: 'custom', message: 'Password is too long.'})
             return
         }
         createUserWithEmailAndPassword(auth, data.email, data.password)
             .then((userCredential) => {
-                updateProfile(userCredential.user, {displayName: data.name})
+                if (image) {
+                    try {
+                        new Promise((resolve, reject) => {
+                            const xhr = new XMLHttpRequest()
+                            xhr.onload = () => {
+                                resolve(xhr.response)
+                            }
+                            xhr.onerror = () => {
+                                reject(new Error('An error has occured.'))
+                            }
+                            xhr.responseType = 'blob'
+                            xhr.open('GET', image, true)
+                            xhr.send(null)
+                        }).then((blob) => {
+                            const storageRef = ref(storage, 'users/' + userCredential.user.uid + '/profilePicture.' + image.split('.').pop())
+                            uploadBytes(storageRef, blob as Blob).then(() => {
+                                getDownloadURL(storageRef).then((url) => {
+                                    updateProfile(userCredential.user, {displayName: data.name, photoURL: url}).then(() => {
+                                        router.push('/')
+                                    })
+                                })
+                            })
+                        })
+                    } catch {
+                        setError('password', {type: 'custom', message: 'An error has occurred.'})
+                        return
+                    }
+                } else {
+                    updateProfile(userCredential.user, {displayName: data.name})
                     .then(() => {
                         router.push('/')
-                    }).catch((error) => {
-                        console.log(error.message)
-                        setError("password", {type: "custom", message: "An error has occurred."})        
+                    }).catch(() => {
+                        setError('password', {type: 'custom', message: 'An error has occurred.'})
+                        return
                     })
+                }
             })
-            .catch((error) => {
-				console.log(error.message)
-                setError("password", {type: "custom", message: "An error has occurred."})
+            .catch(() => {
+                setError('password', {type: 'custom', message: 'An error has occurred.'})
+                return
             })
 	})
 
+    const pickImage = async () => {
+        let result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 1,
+        })
+
+        if (!result.canceled) {
+            setImage(result.assets[0].uri)
+        }
+    }
+
     return (
-        <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-            <Head>
-                <title>Sign up - Kinkajou</title>
-            </Head>
-                        
+        <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>                    
             <Text>Sign up</Text>
             
             <Text>Name</Text>
@@ -64,7 +114,11 @@ export default function SignUp() {
             	<TextInput autoComplete="name" onChangeText={onChange} onBlur={onBlur} value={value} />
 			)} name="name" />
       		{errors.name && <Text>{errors.name.message ? errors.name.message : "This field is required."}</Text>}
-            
+
+            <Text>Profile picture</Text>
+            <Pressable onPress={pickImage}><Text>Pick an image</Text></Pressable>
+            {image && <Image source={{uri: image}} style={styles.image} />}
+
             <Text>Email</Text>
 			<Controller control={control} rules={{required: true}} render={({field: {onChange, onBlur, value}}) => (
             	<TextInput autoComplete="email" inputMode="email" onChangeText={onChange} onBlur={onBlur} value={value} />
@@ -85,3 +139,10 @@ export default function SignUp() {
         </View>
     )
 }
+
+const styles = StyleSheet.create({
+	image: {
+        width: 200,
+        height: 200
+	}
+})
