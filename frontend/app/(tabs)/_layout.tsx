@@ -1,6 +1,5 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5'
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6'
-import Fontisto from '@expo/vector-icons/Fontisto';
 import { Image, StyleSheet, View } from 'react-native'
 import { Tabs } from 'expo-router'
 import { User, signOut } from 'firebase/auth'
@@ -39,7 +38,7 @@ export default function TabLayout() {
                 name="league"
                 options={{
                     title: 'League',
-                    tabBarIcon: ({ color }) => <Fontisto name="flag" size={24} color={color} />
+                    tabBarIcon: ({ color }) => <FontAwesome5 name="trophy" size={24} color={color} />
                 }}
             />
             <Tabs.Screen
